@@ -290,6 +290,7 @@ export default function VideoEditor() {
 	});
 	const {
 		cursor: { effectiveCursorTelemetry },
+		keystrokeSamples,
 		projection,
 		audio,
 		captionCommands,
@@ -320,6 +321,7 @@ export default function VideoEditor() {
 		effectiveSpeedRegions,
 		effectiveZoomRegions,
 		effectiveCursorTelemetry,
+		keystrokeSamples,
 		effectiveShowCursor,
 		cursorTelemetrySourcePath,
 		hasCaptionsForSidecar,
@@ -364,6 +366,7 @@ export default function VideoEditor() {
 		setNativeCaptureUnavailableModalOpen,
 		handleUploadWebcam,
 		handleClearWebcam,
+		keystrokeSampleCount: keystrokeSamples.length,
 	});
 	return (
 		<EditorShell
