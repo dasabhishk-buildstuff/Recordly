@@ -29,6 +29,13 @@ vi.mock("../../appSettingsStore", () => ({
 vi.mock("../utils", () => ({
 	getKeystrokePathForVideo: vi.fn(() => "/tmp/recording.keystrokes.json"),
 	getTelemetryPathForVideo: vi.fn(() => "/tmp/recording.cursor.json"),
+	normalizeVideoSourcePath: (videoPath?: string | null) => {
+		if (typeof videoPath !== "string") {
+			return null;
+		}
+		const trimmed = videoPath.trim();
+		return trimmed ? trimmed : null;
+	},
 	getScreen: vi.fn(() => ({
 		getCursorScreenPoint: () => ({ x: 0, y: 0 }),
 		getPrimaryDisplay: () => ({ scaleFactor: 1 }),
@@ -43,6 +50,7 @@ import {
 	setPendingKeystrokeSamples,
 } from "../state";
 import {
+	isExplicitKeystrokeTelemetryPathDenied,
 	isKeystrokeCaptureEnabledFromPrefs,
 	normalizeKeystrokeTelemetrySamples,
 	persistPendingKeystrokeTelemetry,
@@ -192,6 +200,37 @@ describe("keystroke telemetry", () => {
 		expect(recordingRegisterSource).toContain("snapshotKeystrokeTelemetryForPersistence");
 		expect(recordingRegisterSource).toContain("persistPendingKeystrokeTelemetry");
 		expect(recordingRegisterSource).not.toContain("set-keystroke-telemetry");
+	});
+
+	it("does not deny omitted keystroke telemetry paths", () => {
+		expect(isExplicitKeystrokeTelemetryPathDenied(undefined, () => false)).toBe(false);
+	});
+
+	it("denies explicit paths that fail the allowlist", () => {
+		expect(isExplicitKeystrokeTelemetryPathDenied("/tmp/secret.mp4", () => false)).toBe(true);
+	});
+
+	it("allows explicit paths that pass the allowlist", () => {
+		expect(isExplicitKeystrokeTelemetryPathDenied("/tmp/recording.mp4", () => true)).toBe(
+			false,
+		);
+	});
+
+	it("treats blank explicit keystroke telemetry paths as omitted", () => {
+		expect(isExplicitKeystrokeTelemetryPathDenied("", () => false)).toBe(false);
+		expect(isExplicitKeystrokeTelemetryPathDenied("   ", () => false)).toBe(false);
+	});
+
+	it("authorizes get-keystroke-telemetry senders without wrapping cursor telemetry", () => {
+		expect(recordingRegisterSource).toContain("get-keystroke-telemetry");
+		expect(recordingRegisterSource).not.toContain("set-keystroke-telemetry");
+		expect(recordingRegisterSource).toContain(
+			'ipcMain.handle("get-keystroke-telemetry", async (event, videoPath?: string)',
+		);
+		expect(recordingRegisterSource).toContain("BrowserWindow.fromWebContents");
+		expect(recordingRegisterSource).toContain(
+			'ipcMain.handle("get-cursor-telemetry", async (_, videoPath?: string)',
+		);
 	});
 
 	it("treats missing prefs as capture off", () => {

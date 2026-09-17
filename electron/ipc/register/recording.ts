@@ -22,6 +22,7 @@ import { ALLOW_RECORDLY_WINDOW_CAPTURE } from "../constants";
 import { startWindowBoundsCapture, stopWindowBoundsCapture } from "../cursor/bounds";
 import { startInteractionCapture, stopInteractionCapture } from "../cursor/interaction";
 import {
+	isExplicitKeystrokeTelemetryPathDenied,
 	isKeystrokeCaptureEnabledFromPrefs,
 	normalizeKeystrokeTelemetrySamples,
 	persistPendingKeystrokeTelemetry,
@@ -51,7 +52,7 @@ import {
 	getSystemCursorHelperSourcePath,
 	getWindowsCaptureExePath,
 } from "../paths/binaries";
-import { rememberApprovedLocalReadPath } from "../project/manager";
+import { isAllowedLocalReadPath, rememberApprovedLocalReadPath } from "../project/manager";
 import {
 	getBrowserMicSidecarFilters,
 	shouldKeepRecordingAudioSidecars,
@@ -1971,10 +1972,27 @@ export function registerRecordingHandlers(
 		}
 	});
 
-	ipcMain.handle("get-keystroke-telemetry", async (_, videoPath?: string) => {
+	ipcMain.handle("get-keystroke-telemetry", async (event, videoPath?: string) => {
+		const senderWindow = BrowserWindow.fromWebContents(event.sender);
+		if (!senderWindow || senderWindow.isDestroyed()) {
+			return {
+				success: false,
+				samples: [],
+				message: "Failed to load keystroke telemetry",
+			};
+		}
+
 		const targetVideoPath = normalizeVideoSourcePath(videoPath ?? currentVideoPath);
 		if (!targetVideoPath) {
 			return { success: true, samples: [] };
+		}
+
+		if (isExplicitKeystrokeTelemetryPathDenied(videoPath, isAllowedLocalReadPath)) {
+			return {
+				success: false,
+				samples: [],
+				message: "Failed to load keystroke telemetry",
+			};
 		}
 
 		const telemetryPath = getKeystrokePathForVideo(targetVideoPath);

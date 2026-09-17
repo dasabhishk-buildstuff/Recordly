@@ -8,7 +8,7 @@ import {
 	setPendingKeystrokeSamples,
 } from "../state";
 import type { KeystrokeModifier, KeystrokeTelemetryPoint } from "../types";
-import { getKeystrokePathForVideo } from "../utils";
+import { getKeystrokePathForVideo, normalizeVideoSourcePath } from "../utils";
 import { getCursorCaptureElapsedMs, isCursorCapturePaused } from "./telemetry";
 
 const EDITOR_PREFERENCES_SETTING_KEY = "recordly.editor.preferences";
@@ -77,6 +77,14 @@ export function isKeystrokeCaptureEnabledFromPrefs(): boolean {
 		return false;
 	}
 	return (overlay as { enabled?: unknown }).enabled === true;
+}
+
+export function isExplicitKeystrokeTelemetryPathDenied(
+	videoPath: string | undefined,
+	isAllowedPath: (candidatePath: string) => boolean,
+): boolean {
+	const explicitVideoPath = normalizeVideoSourcePath(videoPath);
+	return Boolean(explicitVideoPath && !isAllowedPath(explicitVideoPath));
 }
 
 function normalizeModifiers(raw: unknown): KeystrokeModifier[] {
